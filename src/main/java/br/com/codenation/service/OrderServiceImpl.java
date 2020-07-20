@@ -20,12 +20,10 @@ public class OrderServiceImpl implements OrderService {
 	 */
 	@Override
 	public Double calculateOrderValue(List<OrderItem> items) {
-		Double total = 0.0;
 		Map<Long, Double> produtos = findProductsById(items.stream().filter(item -> productExists(item.getProductId()))
 				.map(OrderItem::getProductId).collect(Collectors.toList())).stream()
 						.collect(Collectors.toMap(Product::getId, Product::getValue));
-		items.forEach(item -> Double.sum(total, produtos.get(item.getProductId()) * item.getQuantity()));
-		return total;
+		return items.stream().mapToDouble(item -> produtos.get(item.getProductId()) * item.getQuantity()).sum();
 	}
 
 	/**
@@ -33,8 +31,6 @@ public class OrderServiceImpl implements OrderService {
 	 */
 	@Override
 	public Set<Product> findProductsById(List<Long> ids) {
-		// ids = ids.stream().filter(id ->
-		// productExists(id)).collect(Collectors.toList());
 		return productRepository.findAll().stream().parallel().filter(p -> ids.contains(p.getId()))
 				.collect(Collectors.toSet());
 	}
@@ -44,9 +40,7 @@ public class OrderServiceImpl implements OrderService {
 	 */
 	@Override
 	public Double calculateMultipleOrders(List<List<OrderItem>> orders) {
-		Double total = 0.0;
-		orders.forEach(list -> Double.sum(total, calculateOrderValue(list)));
-		return total;
+		return orders.stream().mapToDouble(order -> calculateOrderValue(order)).sum();
 	}
 
 	/**
@@ -55,14 +49,10 @@ public class OrderServiceImpl implements OrderService {
 	@Override
 	public Map<Boolean, List<Product>> groupProductsBySale(List<Long> productIds) {
 		Map<Boolean, List<Product>> mapa = new HashMap<>();
-		Set<Product> produtos = findProductsById(productIds.stream()
-				.filter(id -> productExists(id)).collect(Collectors.toList()));
-		mapa.put(true, produtos.stream()
-				.filter(Product::getIsSale)
-				.collect(Collectors.toList()));
-		mapa.put(false, produtos.stream()
-				.filter(p -> !p.getIsSale())
-				.collect(Collectors.toList()));
+		Set<Product> produtos = findProductsById(
+				productIds.stream().filter(id -> productExists(id)).collect(Collectors.toList()));
+		mapa.put(true, produtos.stream().filter(Product::getIsSale).collect(Collectors.toList()));
+		mapa.put(false, produtos.stream().filter(p -> !p.getIsSale()).collect(Collectors.toList()));
 		return mapa;
 	}
 
